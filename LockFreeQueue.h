@@ -24,8 +24,21 @@
 
 /**
  * Lock free queue for 1 writer and 1 reader threads.
+ * 
+ * Writer and reader are working with a separate queues.
+ * When writer writes data to its own queue it checks if reader has anything to read.
+ * If not then writer pass its queue to reader and starts new one for itself.
+ * 
+ * The only place were reader and writer touch each other is when writer gives
+ * its queue to reader but it's safe. For details look for comments in the code.
+ * 
  * If writer want to stop writing it should call SetWriterFinished() method.
  * After that writer should not write anything to the queue otherwise behavior will be unpredictable.
+ * 
+ * TODO: this class can be refactored to support multiple writers and/or readers.
+ * To do this 2 separate locks should be introduced for writers and readers.
+ * In this case writer will block other writers but not readers and other way around for readers.
+ * This will give lock independence between writers and readers.
  */
 template <class T>
 class LockFreeQueue
