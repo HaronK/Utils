@@ -79,14 +79,7 @@ public:
      * @return true if data was retrieved otherwise false.
      */
     bool read(pointer &data);
-
-    /**
-     * Flush remained data to the reader. Writer only method.
-     *
-     * @return true if data was flushed otherwise false.
-     */
-    bool flush();
-
+    
     void set_writer_finished()
     {
         VAR(writer_finished) = true;
@@ -98,9 +91,10 @@ public:
     }
 
 private:
-    std::atomic<pointer> reader_top;
-    VAR_T(pointer) writer_top;
+    std::atomic<pointer> writer_top;
     VAR_T(pointer) writer_bottom;
+    
+    std::atomic<pointer> reader_top;
 
     VAR_T(bool) writer_finished;
 };
@@ -126,7 +120,7 @@ queue<T>::~queue()
     }
 
     // clean writer's queue
-    elem = VAR(writer_top);
+    elem = writer_top.load(std::memory_order_acquire);
     while (elem != nullptr)
     {
         auto next = elem->VAR(next);
@@ -135,97 +129,80 @@ queue<T>::~queue()
     }
 }
 
+/*
+ * Write data to the queue.
+ * Algorithm:
+ * 1. Retrieve writer top using atomic::exchange(null).
+ * 2. If it is null then create new item.
+ * 3. Otherwise add data to the end.
+ * 4. Retrieve reader top using atomic::exchange(null).
+ * 5. If it is null then set it to the writer top.
+ * 6. Otherwise restore reader's and writer's top.
+ */
 template<class T>
 bool queue<T>::write(pointer data)
 {
     assert(VAR(writer_finished) == false);
     assert(data != nullptr);
 
+    VAR_T(pointer) w_top = writer_top.exchange(nullptr, std::memory_order_acq_rel);
+
     data->VAR(next) = nullptr;
 
-    if (VAR(writer_top) != nullptr)
+    if (VAR(w_top) != nullptr)
     {
         VAR(writer_bottom)->VAR(next) = data; // append new element to the end of the writer's queue
     }
     else
     {
-        VAR(writer_top) = data; // start new writer queue
+        VAR(w_top) = data; // start new writer queue
     }
     VAR(writer_bottom) = data; // update pointer to the end of writer's queue
 
-    if (reader_top.load(std::memory_order_acquire) == nullptr) // reader don't have anything to read
+    VAR_T(pointer) r_top = reader_top.exchange(nullptr, std::memory_order_acq_rel);
+    if (r_top == nullptr) // reader don't have anything to read
     {
-        reader_top.store(VAR(writer_top), std::memory_order_release); // give reader writer's queue
-        VAR(writer_top) = nullptr; // P1: start new writers queue
+        reader_top.store(VAR(w_top), std::memory_order_release); // give reader writer's queue
         return true;
     }
+
+    reader_top.store(VAR(r_top), std::memory_order_release); // restore reader's top
+    writer_top.store(VAR(w_top), std::memory_order_release); // restore writer's top
+
     return false;
 }
 
+/*
+ * Read data from the queue.
+ * Algorithm:
+ * 1. Retrieve reader top using atomic::exchange(null).
+ * 2. If it is null then:
+ * 2.1. Retrieve writer top using atomic::exchange(null).
+ * 2.2. If it is not null then assign it to the reader top.
+ * 3. If reader top is not null return it and shift to the next.
+ */
 template<class T>
 bool queue<T>::read(pointer &data)
 {
-    // If writer stopped in write() method before command marked as P1 there could be 2 situations:
-    // 1. If writer/reader threads/cpus became synchronized reader will not go inside a following 'if' and goes to the
-    //    P2.
-    // 2. Otherwise reader will go inside following 'if' and will always return false because isWriterFinished will
-    //    always be false in this situation (see first assert in Write() method).
-    VAR_T(pointer) val = reader_top.load(std::memory_order_acquire);
-    if (VAR(val) == nullptr)
+    VAR_T(pointer) r_top = reader_top.exchange(nullptr, std::memory_order_acq_rel);
+    if (VAR(r_top) == nullptr)
     {
-        // Magic happens here. If writer is not finished writing and we have nothing to read then we go to the 'false'
-        // branch and return false.
-        // If writer is finished we go to the 'true' branch but we will not interfere in accessing to the 'readerTop' or
-        // 'writerTop' variables with writer because he can not call Write() method after finishing.
-        if (VAR(writer_finished) && VAR(writer_top) != nullptr)
-        {
-            // Reader will come at this place only when writer stops writing to the queue.
-            // Reader just read remaining part of the data if present.
-            reader_top.store(VAR(writer_top), std::memory_order_release);
-            VAR(val) = reader_top.load(std::memory_order_acquire);
-            VAR(writer_top) = nullptr;
-        }
-        else
+        VAR(r_top) = writer_top.exchange(nullptr, std::memory_order_acq_rel);
+        if (VAR(r_top) == nullptr)
         {
             return false;
         }
     }
 
-    // P2
-    // At this place we garantee that readerTop (val) variable is synchronized between reader and writer.
-    // Also we can garantee here that readerTop != nullptr
-    data = VAR(val);
-    reader_top.store(VAR(val)->VAR(next), std::memory_order_release);
-    data->VAR(next) = nullptr; // NOTE: this assigning to nullptr is not really necessary. Just to garantee that reader
-                               // will not use 'next' pointer.
+    if (VAR(r_top)->VAR(next) != nullptr)
+    {
+        reader_top.store(VAR(r_top)->VAR(next), std::memory_order_release);
+    }
+
+    data = VAR(r_top);
 
     return true;
 }
-
-/**
- * This method should be called by writer in a case when writer doesn't write into its own queue for a long time and
- * its queue is not empty. By calling this method writer gives reader remaining part of its queue.
- * Calling of this method by writer will not interfere with calling read() method by reader.
- */
-template<class T>
-bool queue<T>::flush()
-{
-    assert(VAR(writer_finished) == false);
-
-    if (VAR(writer_top) == nullptr)
-    {
-        return true;
-    }
-
-    if (reader_top.load(std::memory_order_acquire) == nullptr)
-    {
-        reader_top.store(VAR(writer_top), std::memory_order_release);
-        VAR(writer_top) = nullptr;
-        return true;
-    }
-    return false;
-}
-
 
 } // namespace types
 

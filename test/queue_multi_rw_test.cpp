@@ -71,7 +71,6 @@ void writer_thread(int index, GuardedWriter<Queue> &q, int data_count, int max_s
         std::this_thread::sleep_for(ms);
     }
 
-//    q->flush();
     auto aw = active_writers.fetch_sub(1);
     if (aw <= 1)
         q->set_writer_finished();

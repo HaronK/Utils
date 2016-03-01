@@ -41,11 +41,6 @@ public:
         return impl->write(data);
     }
 
-    bool flush()
-    {
-        return impl->flush();
-    }
-
     void set_writer_finished()
     {
         impl->set_writer_finished();

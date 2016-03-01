@@ -17,7 +17,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Specify RRD_PATH environment variable with path to the Relacy Race Detector library:
 # http://www.1024cores.net/home/relacy-race-detector
-include_directories($ENV{RRD_PATH})
+include_directories($ENV{RRD_PATH} relacy)
 
 list(APPEND CMAKE_CXX_FLAGS "-pthread")
 
