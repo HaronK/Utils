@@ -38,7 +38,7 @@ namespace types
 /**
  * Guard class that wraps each access to the enclosed object with mutex lock/unlock calls.
  */
-template<class T, class Mutex = std::mutex>
+template<class T, class Mutex = mutex>
 class guard
 {
     Mutex mutex;

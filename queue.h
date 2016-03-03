@@ -91,10 +91,10 @@ public:
     }
 
 private:
-    std::atomic<pointer> writer_top;
+    atomic<pointer> writer_top;
     VAR_T(pointer) writer_bottom;
     
-    std::atomic<pointer> reader_top;
+    atomic<pointer> reader_top;
 
     VAR_T(bool) writer_finished;
 };
@@ -111,7 +111,7 @@ template<class T>
 queue<T>::~queue()
 {
     // clean reader's queue
-    auto elem = reader_top.load(std::memory_order_acquire);
+    auto elem = reader_top.load(memory_order_acquire);
     while (elem != nullptr)
     {
         auto next = elem->VAR(next);
@@ -120,7 +120,7 @@ queue<T>::~queue()
     }
 
     // clean writer's queue
-    elem = writer_top.load(std::memory_order_acquire);
+    elem = writer_top.load(memory_order_acquire);
     while (elem != nullptr)
     {
         auto next = elem->VAR(next);
@@ -145,9 +145,9 @@ bool queue<T>::write(pointer data)
     assert(VAR(writer_finished) == false);
     assert(data != nullptr);
 
-    VAR_T(pointer) w_top = writer_top.exchange(nullptr, std::memory_order_acq_rel);
-
     data->VAR(next) = nullptr;
+
+    VAR_T(pointer) w_top = writer_top.exchange(nullptr, memory_order_acq_rel);
 
     if (VAR(w_top) != nullptr)
     {
@@ -159,15 +159,15 @@ bool queue<T>::write(pointer data)
     }
     VAR(writer_bottom) = data; // update pointer to the end of writer's queue
 
-    VAR_T(pointer) r_top = reader_top.exchange(nullptr, std::memory_order_acq_rel);
-    if (r_top == nullptr) // reader don't have anything to read
+    VAR_T(pointer) r_top = reader_top.exchange(nullptr, memory_order_acq_rel);
+    if (VAR(r_top) == nullptr) // reader don't have anything to read
     {
-        reader_top.store(VAR(w_top), std::memory_order_release); // give reader writer's queue
+        reader_top.store(VAR(w_top), memory_order_release); // give reader writer's queue
         return true;
     }
 
-    reader_top.store(VAR(r_top), std::memory_order_release); // restore reader's top
-    writer_top.store(VAR(w_top), std::memory_order_release); // restore writer's top
+    reader_top.store(VAR(r_top), memory_order_release); // restore reader's top
+    writer_top.store(VAR(w_top), memory_order_release); // restore writer's top
 
     return false;
 }
@@ -184,10 +184,10 @@ bool queue<T>::write(pointer data)
 template<class T>
 bool queue<T>::read(pointer &data)
 {
-    VAR_T(pointer) r_top = reader_top.exchange(nullptr, std::memory_order_acq_rel);
+    VAR_T(pointer) r_top = reader_top.exchange(nullptr, memory_order_acq_rel);
     if (VAR(r_top) == nullptr)
     {
-        VAR(r_top) = writer_top.exchange(nullptr, std::memory_order_acq_rel);
+        VAR(r_top) = writer_top.exchange(nullptr, memory_order_acq_rel);
         if (VAR(r_top) == nullptr)
         {
             return false;
@@ -196,7 +196,7 @@ bool queue<T>::read(pointer &data)
 
     if (VAR(r_top)->VAR(next) != nullptr)
     {
-        reader_top.store(VAR(r_top)->VAR(next), std::memory_order_release);
+        reader_top.store(VAR(r_top)->VAR(next), memory_order_release);
     }
 
     data = VAR(r_top);

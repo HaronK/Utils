@@ -1,9 +1,3 @@
-/*
- * queue_multi_rw_test.cpp
- *
- *  Created on: 30/07/2015
- *      Author: oleg
- */
 
 #include <iostream>
 #include <chrono>
@@ -14,6 +8,8 @@
 #include <random>
 #include <atomic>
 #include <memory>
+
+using namespace std;
 
 #include "queue.h"
 #include "writer.h"

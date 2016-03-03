@@ -1,9 +1,3 @@
-/*
- * queue_single_rw_test.cpp
- *
- *  Created on: 30 лип. 2015
- *      Author: oleg
- */
 
 #include <iostream>
 #include <chrono>
@@ -13,6 +7,8 @@
 #include <cassert>
 #include <random>
 #include <memory>
+
+using namespace std;
 
 #include "queue.h"
 

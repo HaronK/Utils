@@ -1,5 +1,7 @@
 
-#include <relacy/relacy_std.hpp>
+#include <relacy/relacy.hpp>
+
+using namespace rl;
 
 #define assert RL_ASSERT
 
@@ -54,10 +56,7 @@ struct queue_single_rw_test: rl::test_suite<queue_single_rw_test, 2>
 
             q.write(data);
 
-            while (!q.flush())
-            {
-            }
-//            q.set_writer_finished();
+            //q.set_writer_finished();
         }
         else
         {
@@ -122,11 +121,6 @@ struct queue_multi_rw_test: rl::test_suite<queue_multi_rw_test, 3>
 //                std::cout << "   ";
 //            std::cout << (value - 1) << "\n";
 
-            if (flush)
-            {
-                while (!writer->flush())
-                {}
-            }
 //            writer.set_writer_finished();
         }
         else
