@@ -136,9 +136,9 @@ queue<T>::~queue()
  * 1. Retrieve writer top using atomic::exchange(null).
  * 2. If it is null then create new item.
  * 3. Otherwise add data to the end.
- * 4. Retrieve reader top using atomic::exchange(null).
+ * 4. Retrieve reader top using atomic::load(null).
  * 5. If it is null then set it to the writer top.
- * 6. Otherwise restore reader's and writer's top.
+ * 6. Otherwise restore writer's top.
  */
 template<class T>
 bool queue<T>::write(pointer data)
