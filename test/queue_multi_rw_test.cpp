@@ -176,6 +176,7 @@ int main(int argc, const char* argv[])
     {
         std::cout << "Usage: ./queue_multi_rw_test [<attempts_count:1> <data_count:20> " \
                      "<writers_count:2> <writer_max_sleep:100> <readers_count:1> <reader_max_sleep:300>]\n";
+        return 0;
     }
 
     for (auto i = 0; i < attempts_count; ++i)

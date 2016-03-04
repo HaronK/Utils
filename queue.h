@@ -93,10 +93,10 @@ public:
 private:
     atomic<pointer> writer_top;
     VAR_T(pointer) writer_bottom;
-    
-    atomic<pointer> reader_top;
 
     VAR_T(bool) writer_finished;
+
+    atomic<pointer> reader_top;
 };
 
 template<class T>
@@ -105,6 +105,7 @@ queue<T>::queue() : reader_top(nullptr)
     VAR(writer_top)      = nullptr;
     VAR(writer_bottom)   = nullptr;
     VAR(writer_finished) = false;
+    VAR(reader_top)      = nullptr;
 }
 
 template<class T>
@@ -159,14 +160,13 @@ bool queue<T>::write(pointer data)
     }
     VAR(writer_bottom) = data; // update pointer to the end of writer's queue
 
-    VAR_T(pointer) r_top = reader_top.exchange(nullptr, memory_order_acq_rel);
+    VAR_T(pointer) r_top = reader_top.load(memory_order_acquire);
     if (VAR(r_top) == nullptr) // reader don't have anything to read
     {
         reader_top.store(VAR(w_top), memory_order_release); // give reader writer's queue
         return true;
     }
 
-    reader_top.store(VAR(r_top), memory_order_release); // restore reader's top
     writer_top.store(VAR(w_top), memory_order_release); // restore writer's top
 
     return false;

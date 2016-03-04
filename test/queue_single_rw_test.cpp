@@ -121,6 +121,7 @@ int main(int argc, const char* argv[])
     else
     {
         std::cout << "Usage: ./queue_single_rw_test [<attempts_count:1> <data_count:20> <writer_max_sleep:100> <reader_max_sleep:300>]\n";
+        return 0;
     }
 
     for (auto i = 0; i < attempts_count; ++i)
