@@ -1,5 +1,14 @@
 .cproject
 .project
 build/*
+Debug/*
+Release/*
 .metadata
 .settings
+*.opensdf
+*.sdf
+*.sln
+*.suo
+*.vcxproj
+*.filters
+*.user
